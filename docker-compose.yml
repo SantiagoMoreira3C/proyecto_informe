@@ -1,0 +1,42 @@
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "6000:3000"
+    environment:
+      API_INTERNAL_URL: http://api:8000
+    depends_on:
+      - api
+
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg2://altura:altura@postgres:5432/altura_nexo
+      JWT_SECRET: cambia-esta-clave-en-produccion
+      CORS_ORIGINS: http://localhost:6000
+      DATA_DIR: /data
+    volumes:
+      - altura_data:/data
+    expose:
+      - "8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: altura
+      POSTGRES_PASSWORD: altura
+      POSTGRES_DB: altura_nexo
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U altura -d altura_nexo"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  altura_data:
+  postgres_data:

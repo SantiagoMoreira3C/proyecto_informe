@@ -1,0 +1,75 @@
+"use client";
+
+import { ChangeEvent, FormEvent, useEffect, useState } from "react";
+
+type User = { id: number; username: string; role: string };
+type Row = {
+  actividad: string;
+  cliente: string;
+  fecha_desde: string;
+  fecha_hasta: string;
+  descripcion: string;
+};
+
+const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+const emptyRow: Row = { actividad: "", cliente: "", fecha_desde: "", fecha_hasta: "", descripcion: "" };
+
+function api(path: string, init?: RequestInit) {
+  return fetch(path, { ...init, headers: { "Content-Type": "application/json", ...(init?.headers || {}) } });
+}
+
+export default function Home() {
+  const [loading, setLoading] = useState(true);
+  const [needsRegistration, setNeedsRegistration] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [session, setSession] = useState<{ token: string; user: User } | null>(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("altura-session");
+    if (saved) {
+      try { setSession(JSON.parse(saved)); } catch { window.localStorage.removeItem("altura-session"); }
+    }
+    Promise.all([api("/api/bootstrap-status").then((res) => res.json()), api("/api/users").then((res) => res.json())])
+      .then(([status, availableUsers]) => { setNeedsRegistration(status.needs_registration); setUsers(availableUsers); })
+      .catch(() => setError("No se pudo conectar con ALTURA NEXO."))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <main className="center-state"><div className="loader" /><p>Conectando con ALTURA NEXO...</p></main>;
+  if (session) return <Workspace session={session} onLogout={() => { window.localStorage.removeItem("altura-session"); setSession(null); }} />;
+  if (needsRegistration) return <Registration onRegistered={() => { setNeedsRegistration(false); window.location.reload(); }} />;
+  return <Login users={users} selectedUser={selectedUser} setSelectedUser={setSelectedUser} error={error} onLogin={(next) => { setSession(next); window.localStorage.setItem("altura-session", JSON.stringify(next)); }} />;
+}
+
+function Brand() {
+  return <div className="brand"><div className="brand-mark">A</div><div><strong>ALTURA NEXO</strong><span>Asistente de informes</span></div></div>;
+}
+
+function Registration({ onRegistered }: { onRegistered: () => void }) {
+  const [username, setUsername] = useState(""); const [password, setPassword] = useState(""); const [error, setError] = useState(""); const [busy, setBusy] = useState(false);
+  async function submit(event: FormEvent) { event.preventDefault(); setError(""); setBusy(true); const res = await api("/api/register", { method: "POST", body: JSON.stringify({ username, password }) }); const data = await res.json(); setBusy(false); if (!res.ok) return setError(data.detail || "No se pudo crear el usuario."); onRegistered(); }
+  return <main className="auth-shell"><section className="auth-intro"><Brand /><div className="intro-copy"><p className="eyebrow">PRIMER ACCESO</p><h1>El orden de tus documentos empieza aquí.</h1><p>Registra el primer usuario administrador para preparar informes de actividades con archivos Excel, PDF y fotografías.</p></div><div className="intro-note"><span className="status-dot" /> Servidor listo para comenzar</div></section><section className="auth-card"><p className="eyebrow">Configuración inicial</p><h2>Crea tu acceso</h2><p className="muted">Este formulario aparece solo una vez. Ambos campos son obligatorios.</p><form onSubmit={submit} className="form-stack"><label>Usuario<input required minLength={3} value={username} onChange={(e) => setUsername(e.target.value)} placeholder="ej. coordinacion" /></label><label>Contraseña<input required minLength={8} type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 8 caracteres" /></label>{error && <div className="alert error">{error}</div>}<button className="primary-button" disabled={busy}>{busy ? "Creando..." : "Crear usuario administrador"}</button></form></section></main>;
+}
+
+function Login({ users, selectedUser, setSelectedUser, error, onLogin }: { users: User[]; selectedUser: User | null; setSelectedUser: (user: User) => void; error: string; onLogin: (session: { token: string; user: User }) => void }) {
+  const [password, setPassword] = useState(""); const [loginError, setLoginError] = useState(""); const [busy, setBusy] = useState(false);
+  async function submit(event: FormEvent) { event.preventDefault(); if (!selectedUser) return setLoginError("Selecciona un usuario para continuar."); setBusy(true); setLoginError(""); const res = await api("/api/login", { method: "POST", body: JSON.stringify({ username: selectedUser.username, password }) }); const data = await res.json(); setBusy(false); if (!res.ok) return setLoginError(data.detail || "Usuario o contraseña incorrectos."); onLogin(data); }
+  return <main className="auth-shell"><section className="auth-intro"><Brand /><div className="intro-copy"><p className="eyebrow">INFORMES PARA ALTURA</p><h1>De la carpeta de archivos a un informe claro.</h1><p>Selecciona el periodo, carga tus fuentes y conversa con el borrador hasta dejarlo listo.</p></div><div className="feature-list"><span><b>01</b> Validación de mes y año</span><span><b>02</b> Fuentes organizadas</span><span><b>03</b> Excel listo para compartir</span></div></section><section className="auth-card"><p className="eyebrow">Acceso privado</p><h2>¿Quién eres?</h2><p className="muted">Selecciona tu usuario y luego escribe la contraseña.</p><div className="user-list">{users.map((user) => <button key={user.id} className={`user-option ${selectedUser?.id === user.id ? "selected" : ""}`} onClick={() => { setSelectedUser(user); setLoginError(""); }}><span className="avatar">{user.username.slice(0, 1).toUpperCase()}</span><span><strong>{user.username}</strong><small>{user.role === "admin" ? "Administrador" : "Usuario de ALTURA"}</small></span><span className="arrow">›</span></button>)}</div>{(error || loginError) && <div className="alert error">{error || loginError}</div>}<form onSubmit={submit} className="form-stack"><label>Contraseña<input required type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Escribe tu contraseña" /></label><button className="primary-button" disabled={busy || !selectedUser}>{busy ? "Entrando..." : "Entrar al espacio de trabajo"}</button></form></section></main>;
+}
+
+function Workspace({ session, onLogout }: { session: { token: string; user: User }; onLogout: () => void }) {
+  const now = new Date(); const currentYear = now.getFullYear(); const [month, setMonth] = useState(now.getMonth() + 1); const [year, setYear] = useState(currentYear); const [person, setPerson] = useState(""); const [files, setFiles] = useState<File[]>([]); const [rows, setRows] = useState<Row[]>([{ ...emptyRow }]); const [chat, setChat] = useState<{ from: "ai" | "user"; text: string }[]>([{ from: "ai", text: "Selecciona el mes, carga tus documentos y te ayudaré a preparar el informe. También puedes editar la tabla directamente." }]); const [message, setMessage] = useState(""); const [notice, setNotice] = useState<{ type: "success" | "warning" | "error"; text: string } | null>(null); const [busy, setBusy] = useState(false);
+  const isPreviousYear = year !== currentYear;
+  const periodLabel = `${months[month - 1]} ${year}`;
+  const canGenerate = person.trim().length > 0 && rows.some((row) => row.actividad.trim());
+  const inputProps = (index: number, field: keyof Row) => ({ value: rows[index][field], onChange: (event: ChangeEvent<HTMLInputElement>) => setRows((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, [field]: event.target.value } : row)) });
+
+  async function upload() { if (!files.length) return setNotice({ type: "warning", text: "Selecciona al menos un archivo." }); const form = new FormData(); form.append("month", String(month)); form.append("year", String(year)); files.forEach((file) => form.append("files", file)); setBusy(true); const res = await fetch("/api/uploads", { method: "POST", headers: { Authorization: `Bearer ${session.token}` }, body: form }); const data = await res.json(); setBusy(false); if (!res.ok) return setNotice({ type: "error", text: data.detail || "No se pudieron cargar los archivos." }); setNotice({ type: data.warnings?.length ? "warning" : "success", text: data.warnings?.length ? data.warnings.join(" ") : `${data.saved.length} archivo(s) guardado(s) para ${periodLabel}.` }); }
+  async function generate() { if (!canGenerate) return setNotice({ type: "warning", text: "Indica la persona y agrega al menos una actividad." }); setBusy(true); const res = await fetch("/api/reports/generate", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` }, body: JSON.stringify({ month, year, person, rows }) }); setBusy(false); if (!res.ok) return setNotice({ type: "error", text: "No se pudo generar el Excel." }); const blob = await res.blob(); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = `ALT-INF-RES-PER-${months[month - 1].slice(0, 3).toUpperCase()}-${year}-${person.toUpperCase().replace(/\s+/g, "_")}.xlsx`; link.click(); URL.revokeObjectURL(url); setNotice({ type: "success", text: "Informe generado y descargado correctamente." }); }
+  function sendChat(event: FormEvent) { event.preventDefault(); const clean = message.trim(); if (!clean) return; setChat((current) => [...current, { from: "user", text: clean }, { from: "ai", text: "He registrado tu indicación. En la siguiente etapa conectaré este chat con la lectura automática de tus archivos; mientras tanto puedes ajustar las filas directamente en la tabla." }]); setMessage(""); }
+  function addRow() { setRows((current) => [...current, { ...emptyRow }]); }
+  function removeRow(index: number) { setRows((current) => current.length === 1 ? current : current.filter((_, rowIndex) => rowIndex !== index)); }
+  return <main className="app-shell"><header className="topbar"><Brand /><div className="topbar-actions"><span className="signed-user"><span className="status-dot" /> {session.user.username}</span><button className="text-button" onClick={onLogout}>Cerrar sesión</button></div></header><div className="workspace"><aside className="sidebar"><div><p className="eyebrow">ESPACIO DE TRABAJO</p><nav><a className="nav-item active"><span>▦</span> Nuevo informe</a><a className="nav-item"><span>◷</span> Historial <em>próximamente</em></a></nav></div><div className="side-help"><span className="help-mark">?</span><strong>Formato ALT</strong><p>ALT-INF-ACT-PER-AGO-2026-NOMBRE_APELLIDO</p></div></aside><section className="content"><div className="page-heading"><div><p className="eyebrow">NUEVO INFORME</p><h1>Prepara un informe informativo</h1><p className="muted">Elige el periodo antes de cargar los documentos.</p></div><span className="period-badge">{periodLabel}</span></div><div className="setup-grid"><section className="panel period-panel"><div className="panel-heading"><div><span className="step">01</span><h2>Periodo y persona</h2></div><span className="material-label">REQUERIDO</span></div><div className="field-grid"><label>Mes del informe<select value={month} onChange={(e) => setMonth(Number(e.target.value))}>{months.map((label, index) => <option key={label} value={index + 1}>{label}</option>)}</select></label><label>Año<select value={year} onChange={(e) => setYear(Number(e.target.value))}><option value={currentYear}>{currentYear} · presente</option><option value={currentYear - 1}>{currentYear - 1}</option><option value={currentYear - 2}>{currentYear - 2}</option></select></label></div><label>Nombre y apellido<input value={person} onChange={(e) => setPerson(e.target.value)} placeholder="Ej. Santiago Moreira" /></label>{isPreviousYear && <div className="alert warning">Estás trabajando con el año {year}. Verifica que el periodo sea correcto antes de generar el informe.</div>}</section><section className="panel upload-panel"><div className="panel-heading"><div><span className="step">02</span><h2>Fuentes del informe</h2></div><span className="material-label">XLSX · PDF · FOTOS</span></div><label className="dropzone"><input type="file" multiple accept=".xlsx,.xls,.pdf,.jpg,.jpeg,.png" onChange={(e) => setFiles(Array.from(e.target.files || []))} /><span className="upload-icon">↑</span><strong>Arrastra o selecciona tus archivos</strong><small>Se guardarán dentro de ALTURA NEXO sin sobrescribir los originales.</small></label>{files.length > 0 && <div className="file-chips">{files.map((file) => <span key={file.name}>● {file.name}</span>)}</div>}<button className="secondary-button" onClick={upload} disabled={busy || !files.length}>{busy ? "Procesando..." : "Cargar documentos"}</button></section></div>{notice && <div className={`alert ${notice.type}`}>{notice.text}</div>}<section className="panel report-panel"><div className="panel-heading report-heading"><div><span className="step">03</span><h2>Borrador del informe</h2></div><div className="report-actions"><button className="text-button" onClick={addRow}>+ Agregar fila</button><button className="primary-button compact" onClick={generate} disabled={busy || !canGenerate}>Generar Excel</button></div></div><div className="table-wrap"><table><thead><tr><th>No.</th><th>Actividad</th><th>Cliente/Proyecto/Servicio</th><th>Fecha desde</th><th>Fecha hasta</th><th>Descripción</th><th /></tr></thead><tbody>{rows.map((row, index) => <tr key={index}><td className="row-number">{index + 1}</td><td><input {...inputProps(index, "actividad")} placeholder="Actividad realizada" /></td><td><input {...inputProps(index, "cliente")} placeholder="Cliente o proyecto" /></td><td><input {...inputProps(index, "fecha_desde")} placeholder="DD/MM/AAAA" /></td><td><input {...inputProps(index, "fecha_hasta")} placeholder="DD/MM/AAAA" /></td><td><input {...inputProps(index, "descripcion")} placeholder="Detalle de la actividad" /></td><td><button className="remove-button" onClick={() => removeRow(index)} aria-label="Eliminar fila">×</button></td></tr>)}</tbody></table></div></section><section className="panel chat-panel"><div className="chat-title"><span className="chat-icon">✦</span><div><h2>Asistente de correcciones</h2><p className="muted">Pide cambios sobre tu borrador en lenguaje natural.</p></div></div><div className="chat-messages">{chat.map((item, index) => <div key={index} className={`message ${item.from}`}>{item.text}</div>)}</div><form className="chat-form" onSubmit={sendChat}><input value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Ej. Corrige la descripción de la actividad 2..." /><button className="send-button" aria-label="Enviar mensaje">↑</button></form></section></section></div></main>;
+}
