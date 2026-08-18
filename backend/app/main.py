@@ -542,7 +542,7 @@ def create_report_file(month: int, year: int, person: str, rows: list[ReportRow]
 
 
 app = FastAPI(title="ALTURA NEXO API", version="0.1.0")
-origins = [item.strip() for item in os.getenv("CORS_ORIGINS", "http://localhost:8080").split(",")]
+origins = [item.strip() for item in os.getenv("CORS_ORIGINS", "http://localhost:9000").split(",")]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
