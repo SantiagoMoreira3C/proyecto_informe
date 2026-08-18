@@ -160,17 +160,18 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 
 .guide-video-card { width: min(100%, 480px); padding: 14px; border-radius: 14px; }
 .guide-video-card.auth { color: white; border: 1px solid #ffffff2e; background: #0b30484d; box-shadow: 0 12px 28px #06233526; }
-.guide-video-card.workspace { margin: 0 auto 16px; color: var(--ink); border: 1px solid var(--line); background: white; box-shadow: 0 1px 3px #1e31450b; }
+.guide-video-card.history { width: min(100%, 1000px); margin: 24px 0 0; padding: 22px; color: var(--ink); border: 1px solid var(--line); background: white; box-shadow: 0 4px 14px #1e314512; }
 .guide-video-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 11px; }
 .guide-video-heading > div { display: flex; align-items: center; gap: 9px; }
 .guide-video-heading .eyebrow { margin-bottom: 3px; font-size: .58rem; }
 .guide-video-heading h2 { margin: 0; font-size: .86rem; letter-spacing: -.02em; }
 .guide-play { display: grid; place-items: center; width: 27px; height: 27px; padding-left: 1px; color: var(--blue); border-radius: 8px; background: var(--cyan); font-size: .65rem; }
 .mute-badge { padding: 5px 7px; color: #b8eee8; border: 1px solid #ffffff2e; border-radius: 6px; font-size: .55rem; font-weight: 700; letter-spacing: .06em; white-space: nowrap; }
-.guide-video-card.workspace .mute-badge { color: var(--blue); border-color: #afd6dd; background: #f2fbfb; }
+.guide-video-card.history .mute-badge { color: var(--blue); border-color: #afd6dd; background: #f2fbfb; }
 .guide-video { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: 9px; background: #082333; object-fit: cover; }
 .guide-video-note { margin: 9px 2px 0; color: #b6d3da; font-size: .62rem; line-height: 1.45; }
-.guide-video-card.workspace .guide-video-note { color: var(--soft); }
+.guide-video-card.history .guide-video-note { color: var(--muted); font-size: .72rem; }
+.guide-video-card.history .guide-video-heading h2 { font-size: 1.05rem; }
 .auth-intro .guide-video-card { align-self: flex-start; margin-top: -20px; }
 
 @media (max-width: 980px) {
@@ -179,6 +180,7 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 
 @media (max-width: 620px) {
   .guide-video-card { padding: 11px; }
+  .guide-video-card.history { padding: 14px; }
   .guide-video-heading h2 { font-size: .78rem; }
   .guide-video-note { font-size: .59rem; }
 }
