@@ -2,7 +2,7 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "6000:3000"
+      - "8080:3000"
     environment:
       API_INTERNAL_URL: http://api:8000
     depends_on:
@@ -13,8 +13,11 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg2://altura:altura@postgres:5432/altura_nexo
       JWT_SECRET: cambia-esta-clave-en-produccion
-      CORS_ORIGINS: http://localhost:6000
+      CORS_ORIGINS: http://localhost:8080
       DATA_DIR: /data
+      OPENCODE_API_KEY: ${OPENCODE_API_KEY:-}
+      OPENCODE_URL: ${OPENCODE_URL:-https://opencode.ai/zen/go/v1/responses}
+      OPENCODE_MODEL: ${OPENCODE_MODEL:-gpt-5.6-luna}
     volumes:
       - altura_data:/data
     expose:
